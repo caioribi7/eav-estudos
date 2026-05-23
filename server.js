@@ -97,9 +97,13 @@ function getUserFull(userId) {
 }
 
 function saveDB() {
-  const data = db.export();
-  const buffer = Buffer.from(data);
-  fs.writeFileSync(DB_PATH, buffer);
+  try {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(DB_PATH, buffer);
+  } catch(e) {
+    console.error('saveDB failed (read-only fs?):', e.message);
+  }
 }
 
 function all(stmt) {
@@ -1190,9 +1194,19 @@ async function start() {
     res.send(injected);
   });
 
+  if (process.env.VERCEL) return;
   app.listen(PORT, () => {
     console.log(`EAV server running on http://localhost:${PORT}`);
   });
 }
 
-start().catch(err => { console.error('Failed to start:', err); process.exit(1); });
+if (process.env.VERCEL) {
+  let _init;
+  module.exports = async (req, res) => {
+    if (!_init) _init = start();
+    await _init;
+    app(req, res);
+  };
+} else {
+  start().catch(err => { console.error('Failed to start:', err); process.exit(1); });
+}
