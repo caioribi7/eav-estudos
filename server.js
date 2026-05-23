@@ -340,12 +340,26 @@ function resetWeeklyIfNeeded() {
 }
 
 async function loadDB() {
+  const sqlPromise = initSqlJs({
+    locateFile: file => {
+      const candidates = [
+        path.join(__dirname, file),
+        path.join(__dirname, 'node_modules', 'sql.js', 'dist', file),
+        path.join(process.cwd(), file),
+        path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', file),
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p)) return p;
+      }
+      return candidates[0];
+    }
+  });
   if (fs.existsSync(DB_PATH)) {
     const buffer = fs.readFileSync(DB_PATH);
-    const SQL = await initSqlJs();
+    const SQL = await sqlPromise;
     db = new SQL.Database(buffer);
   } else {
-    const SQL = await initSqlJs();
+    const SQL = await sqlPromise;
     db = new SQL.Database();
   }
   initDB();
